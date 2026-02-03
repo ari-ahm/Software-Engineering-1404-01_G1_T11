@@ -51,10 +51,10 @@
             
             <div>
               <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 10px;">
-                <span class="exam-type-badge" style="background: {% if submission.submission_type == 'writing' %}var(--light-blue){% else %}var(--coral){% endif %}; color: var(--navy); padding: 5px 15px; border-radius: 15px; font-weight: bold;">
+                <span class="exam-type-badge" style="background: {% if submission.submission_type == 'writing' %} #e3f2fd {% else %} #ffcccc {% endif %}; color: var(--navy); padding: 5px 15px; border-radius: 15px; font-weight: bold;">
                   {% if submission.submission_type == 'writing' %}نوشتن{% else %}اسپیکینگ{% endif %}
                 </span>
-                <span class="status-badge" style="background: {% if submission.status == 'completed' %}#d4edda{% else %}#fff3cd{% endif %}; color: {% if submission.status == 'completed' %}#155724{% else %}#856404{% endif %}; padding: 5px 15px; border-radius: 15px; font-size: 0.9rem;">
+                <span class="status-badge" style="background: {% if submission.status == 'completed' %}#d4edda{% else %}#ffcccc{% endif %}; color: {% if submission.status == 'completed' %}#155724{% else %}#856404{% endif %}; padding: 5px 15px; border-radius: 15px; font-size: 0.9rem;">
                   {% if submission.status == 'completed' %}تکمیل شده{% elif submission.status == 'pending' %}در انتظار{% else %}{{ submission.status }}{% endif %}
                 </span>
               </div>

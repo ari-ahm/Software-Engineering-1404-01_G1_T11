@@ -1,188 +1,126 @@
-# Team 11 - Listening & Writing Microservice
+# Team 11 - TOEFL Listening & Writing Assessment
 
-## Overview
-
-This microservice provides listening (speaking) and writing assessment functionality for the English learning platform. Users can submit writing texts or audio recordings, receive instant scores (currently static at 90), and view their submission history.
+AI-powered English exam microservice with dynamic question system and TOEFL iBT-standard assessment.
 
 [View Figma Design](https://www.figma.com/design/3uaZuwIjT0OU8v7w2cy7Df/SE1_T11?node-id=0-1&m=dev&t=wTZc2qAKki3quDGV-1)
 
+## Features
 
-## Features Implemented (Step 1)
+**AI Assessment** (Deepseek + Whisper)
+- Writing: Grammar, Vocabulary, Coherence, Task Response (TOEFL iBT rubric)
+- Speaking: Delivery, Fluency, Vocabulary, Grammar, Topic Development (TOEFL iBT rubric)
+- Audio transcription with Whisper API
+- Personalized feedback with improvement suggestions
+- Cost: ~$0.10/month for 300 submissions
 
-✅ **Database Models**
-- `Submission`: Base model for all submissions (writing/listening)
-- `WritingSubmission`: Details for writing tasks
-- `ListeningSubmission`: Details for listening/speaking tasks
-- `AssessmentResult`: Detailed scoring and feedback
+**Dynamic Question System**
+- Category-based question organization (Academic, Personal, Opinion, etc.)
+- Random question selection per exam
+- Difficulty levels: beginner, intermediate, advanced
+- 10 sample TOEFL-style questions included
 
-✅ **API Endpoints**
-- `POST /team11/api/submit-writing/` - Submit writing text
-- `POST /team11/api/submit-listening/` - Submit audio recording
-- `GET /team11/dashboard/` - View submission history
-- `GET /team11/submission/<uuid>/` - View detailed results
+**Database Models**
+- `QuestionCategory` & `Question`: Dynamic question management
+- `Submission`: Base model with status tracking
+- `WritingSubmission` & `ListeningSubmission`: Exam details with question linking
+- `AssessmentResult`: Detailed TOEFL-standard scores and feedback
 
-✅ **Frontend Pages**
-- Landing page with service overview
-- Exam type selection page
-- Writing exam interface with word counter
-- Listening exam interface with audio recording
-- Dashboard with submission history
-- Detailed results page with scores and feedback
+## Quick Start
 
-✅ **Static Data (for now)**
-- 3 writing topics
-- 3 listening topics
-- Static score of 90 for all submissions
-- Pre-defined feedback and suggestions
+**Local Development:**
+```powershell
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python manage.py migrate --database=team11
+python manage.py runserver
+```
+Access: http://localhost:8000/team11/
+
+**Docker:**
+```powershell
+docker-compose up --build
+docker-compose exec core python manage.py migrate
+```
+
+## AI Integration
+
+**API Configuration:**
+- Provider: GapGPT (`https://api.gapgpt.app/v1`)
+- Models: `deepseek-chat` (text), `gapgpt/whisper-1` (audio)
+- Key: Configured in `services/ai_service.py`
+
+**Service Layer:**
+```python
+from team11.services import assess_writing, assess_speaking
+
+# Writing: Returns scores + feedback
+result = assess_writing(topic, text_body, word_count)
+
+# Speaking: Transcription + analysis
+result = assess_speaking(topic, audio_file_path, duration_seconds)
+```
+
+**Test AI:**
+```powershell
+python team11/test_ai_service.py
+```
+
+## TOEFL iBT Assessment Criteria
+
+**Writing** (0-100 scale, normalized from 5-point rubric):
+| Score | Grammar & Syntax | Vocabulary | Coherence | Task Response |
+|-------|------------------|------------|-----------|---------------|
+| 90-100 | Minimal errors, clear | Precise, varied | Well-organized | Fully developed |
+| 70-89 | Minor errors | Adequate variety | Generally clear | Somewhat developed |
+| 50-69 | Frequent errors | Limited range | Basic organization | Limited development |
+| 30-49 | Severe errors | Repetitive | Disorganized | Poorly developed |
+| 0-29 | Unintelligible | Severely limited | Incoherent | Minimal response |
+
+**Speaking** (0-100 scale, normalized from 4-point rubric):
+| Score | Delivery | Fluency | Vocabulary | Grammar | Development |
+|-------|----------|---------|------------|---------|-------------|
+| 85-100 | Clear speech | Minor hesitation | Effective | Good control | Fully developed |
+| 60-84 | Generally clear | Some hesitation | Adequate | Noticeable errors | Somewhat developed |
+| 35-59 | Unclear | Frequent pauses | Limited | Frequent errors | Limited development |
+| 0-34 | Hard to understand | Fragmented | Severely limited | Severe errors | Minimal content |
 
 ## Project Structure
 
 ```
 team11/
-├── models.py              # Database models
-├── views.py               # Views and API endpoints
-├── urls.py                # URL routing
-├── admin.py               # Django admin configuration
-├── migrations/            # Database migrations
-│   └── 0001_initial.py
-├── templates/team11/      # HTML templates
-│   ├── index.html         # Landing page
-│   ├── start_exam.html    # Exam selection
-│   ├── writing_exam.html  # Writing interface
-│   ├── listening_exam.html # Audio recording interface
-│   ├── dashboard.html     # Submission history
-│   └── submission_detail.html # Detailed results
-└── static/team11/         # CSS and assets
-    ├── styles/
-    │   ├── common.css     # Shared styles
-    │   └── style.css      # Page-specific styles
-    └── public/
-        └── images/
+├── services/
+│   ├── ai_service.py       # AI assessment functions
+│   └── prompts.py          # TOEFL iBT prompts
+├── models.py               # Database schema
+├── views.py                # API endpoints (dynamic questions)
+├── admin.py                # Admin interface for questions
+├── migrations/             # Database migrations
+├── templates/team11/       # Frontend templates
+└── test_ai_service.py      # AI testing
 ```
 
-## How to Run the Project
+## Testing
 
-### Option 1: Local Development (Without Docker)
+1. **Register**: http://localhost:8000/ → ثبت نام
+2. **Writing Exam**: Select category → Random question appears → Submit essay (150+ words)
+3. **Speaking Exam**: Select category → Random question appears → Record audio (30-60s)
+4. **Dashboard**: View all submissions and detailed TOEFL-standard scores
+5. **Admin**: http://localhost:8000/admin/ → Manage questions and categories
 
-1. **Ensure Python environment is set up:**
-   ```powershell
-   # Virtual environment should already be created
-   # If not, create it:
-   python -m venv .venv
-   
-   # Activate it (already done by VS Code Python extension)
-   .venv\Scripts\Activate.ps1
-   ```
+## API Endpoints
 
-2. **Install dependencies:**
-   ```powershell
-   pip install -r requirements.txt
-   ```
+- `POST /team11/api/submit-writing/` - Submit writing with question_id
+- `POST /team11/api/submit-listening/` - Submit speaking with question_id
+- `GET /team11/dashboard/` - Submission history
+- `GET /team11/submission/<uuid>/` - Detailed results
 
-3. **Verify .env file exists:**
-   ```powershell
-   # Should already exist from setup
-   # If not, copy from example:
-   Copy-Item .env.example .env
-   ```
+## Architecture
 
-4. **Run migrations (already completed):**
-   ```powershell
-   python manage.py migrate
-   ```
+- **Microservice Pattern**: Independent database (`team11.sqlite3`)
+- **Authentication**: Shared JWT cookies via core app
+- **AI Service**: Isolated in `services/` layer
+- **Database Router**: Custom routing for team databases
+- **Error Handling**: Failed assessments logged with status='failed'
 
-5. **Create a superuser (optional, for admin access):**
-   ```powershell
-   python manage.py createsuperuser
-   ```
-
-6. **Run the development server:**
-   ```powershell
-   python manage.py runserver
-   ```
-
-7. **Access the application:**
-   - Main site: http://localhost:8000/
-   - Team 11 microservice: http://localhost:8000/team11/
-   - Django admin: http://localhost:8000/admin/
-
-### Option 2: Docker (Production-like)
-
-1. **Create Docker network (if not exists):**
-   ```powershell
-   docker network create app404_net
-   ```
-
-2. **Build and run with Docker Compose:**
-   ```powershell
-   # From project root
-   docker-compose up --build
-   ```
-
-3. **Run migrations in Docker:**
-   ```powershell
-   docker-compose exec core python manage.py migrate
-   ```
-
-4. **Create superuser in Docker (optional):**
-   ```powershell
-   docker-compose exec core python manage.py createsuperuser
-   ```
-
-5. **Access the application:**
-   - Main site: http://localhost:8000/
-   - Team 11 microservice: http://localhost:8000/team11/
-
-## Testing the Microservice
-
-### 1. User Registration and Login
-
-1. Navigate to http://localhost:8000/
-2. Click "ثبت نام" (Sign Up) to create an account
-3. Fill in the registration form
-4. After registration, log in with your credentials
-
-### 2. Test Writing Submission
-
-1. Go to http://localhost:8000/team11/
-2. Click "شروع آزمون" (Start Exam)
-3. Select a writing topic
-4. Write at least 150 words in the text area
-5. Click "ارسال و دریافت نمره" (Submit and Get Score)
-6. You should receive a score of 90
-
-### 3. Test Listening/Speaking Submission
-
-1. From the exam selection page, choose a listening topic
-2. Click "شروع ضبط صدا" (Start Recording)
-3. Allow microphone access when prompted
-4. Speak for a few seconds
-5. Click "توقف ضبط" (Stop Recording)
-6. Preview the audio
-7. Click "ارسال و دریافت نمره" (Submit and Get Score)
-8. You should receive a score of 90
-
-### 4. View Dashboard
-
-1. Click "داشبورد من" (My Dashboard)
-2. You should see all your submissions
-3. Click "جزئیات" (Details) on any submission to view full results
-
-### 5. Admin Interface (if superuser created)
-
-1. Go to http://localhost:8000/admin/
-2. Log in with superuser credentials
-3. Navigate to Team11 models to view/manage submissions
-
-## Architecture Notes
-
-- **Microservice Pattern**: Team 11 operates independently with its own database
-- **Authentication**: Shared authentication via core app (JWT cookies)
-- **Database Router**: Automatically routes team11 models to team11 database
-- **Styling**: Matches core project's Persian/RTL design system
-- **Static Content**: Currently uses placeholder responses (90 score) for rapid prototyping
-
-## Contributors
-
-Team 11 - Software Engineering Course 1404-01
-Amirkabir University of Technology
+---
+**Team 11** - Software Engineering 1404-01 | Amirkabir University of Technology

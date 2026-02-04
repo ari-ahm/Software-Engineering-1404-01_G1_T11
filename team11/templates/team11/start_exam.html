@@ -18,7 +18,6 @@
 
       <div class="header-right">
         <div class="flag-settings">
-          <img src="{% static 'team11/public/images/settings.png' %}" alt="" class="settings-icon">
           <div class="iran-flag">
             <div class="flag-green"></div>
             <div class="flag-white"></div>
@@ -49,30 +48,38 @@
           <p style="color: var(--dark-blue); margin-bottom: 30px; text-align: center;">یکی از موضوعات زیر را انتخاب کنید:</p>
           
           <div class="topic-list" style="display: flex; flex-direction: column; gap: 15px;">
-            {% for topic in writing_topics %}
-            <a href="{% url 'team11_writing_exam' %}?topic={{ forloop.counter0 }}" 
+            {% for category in writing_categories %}
+            <a href="{% url 'team11_writing_exam' %}?category={{ category.category_id }}" 
                class="topic-card" 
                style="background: var(--bg-cream); padding: 20px; border-radius: 10px; text-decoration: none; color: var(--navy); border: 2px solid transparent; transition: all 0.3s;">
-              <div style="font-weight: bold; margin-bottom: 5px;">موضوع {{ forloop.counter }}</div>
-              <div style="color: var(--dark-blue);">{{ topic }}</div>
+              <div style="font-weight: bold; margin-bottom: 5px; text-align: center;">{{ category.name }}</div>
+              <div style="color: var(--dark-blue); font-size: 0.9em; direction: ltr; text-align: center;">{{ category.description }}</div>
             </a>
+            {% empty %}
+            <div style="text-align: center; color: var(--dark-blue); padding: 20px;">
+              هیچ دسته‌بندی فعالی وجود ندارد
+            </div>
             {% endfor %}
           </div>
         </div>
 
-        <!-- Listening Exam Section -->
+        <!-- Speaking Exam Section -->
         <div class="exam-section" style="background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-          <h2 style="color: var(--navy); margin-bottom: 20px; text-align: center;">آزمون گوش دادن (اسپیکینگ)</h2>
+          <h2 style="color: var(--navy); margin-bottom: 20px; text-align: center;">آزمون صحبت کردن</h2>
           <p style="color: var(--dark-blue); margin-bottom: 30px; text-align: center;">یکی از موضوعات زیر را انتخاب کنید:</p>
           
           <div class="topic-list" style="display: flex; flex-direction: column; gap: 15px;">
-            {% for topic in listening_topics %}
-            <a href="{% url 'team11_listening_exam' %}?topic={{ forloop.counter0 }}" 
+            {% for category in listening_categories %}
+            <a href="{% url 'team11_listening_exam' %}?category={{ category.category_id }}" 
                class="topic-card" 
                style="background: var(--bg-cream); padding: 20px; border-radius: 10px; text-decoration: none; color: var(--navy); border: 2px solid transparent; transition: all 0.3s;">
-              <div style="font-weight: bold; margin-bottom: 5px;">موضوع {{ forloop.counter }}</div>
-              <div style="color: var(--dark-blue);">{{ topic }}</div>
+              <div style="font-weight: bold; margin-bottom: 5px; text-align: center;">{{ category.name }}</div>
+              <div style="color: var(--dark-blue); font-size: 0.9em; direction: ltr; text-align: center;">{{ category.description }}</div>
             </a>
+            {% empty %}
+            <div style="text-align: center; color: var(--dark-blue); padding: 20px;">
+              هیچ دسته‌بندی فعالی وجود ندارد
+            </div>
             {% endfor %}
           </div>
         </div>

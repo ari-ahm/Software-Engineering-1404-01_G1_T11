@@ -66,6 +66,7 @@ class ListeningSubmission(models.Model):
     topic = models.CharField(max_length=500)
     audio_file_url = models.CharField(max_length=500)
     duration_seconds = models.PositiveIntegerField()
+    transcription = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"Listening: {self.topic[:50]}"

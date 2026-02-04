@@ -1,13 +1,19 @@
 import json
+import os
+import logging
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_POST, require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
 from core.auth import api_login_required
 from .models import (
     Submission, WritingSubmission, ListeningSubmission, 
     AssessmentResult, SubmissionType, AnalysisStatus
 )
+from .services import assess_writing, assess_speaking
+
+logger = logging.getLogger(__name__)
 
 TEAM_NAME = "team11"
 
@@ -102,12 +108,11 @@ def submit_writing(request):
         
         word_count = len(text_body.split())
         
-        # Create submission
+        # Create submission with pending status
         submission = Submission.objects.create(
             user_id=request.user.id,
             submission_type=SubmissionType.WRITING,
-            overall_score=90.0,  # Static score for now
-            status=AnalysisStatus.COMPLETED
+            status=AnalysisStatus.IN_PROGRESS
         )
         
         # Create writing details
@@ -118,29 +123,52 @@ def submit_writing(request):
             word_count=word_count
         )
         
-        # Create assessment result
-        AssessmentResult.objects.create(
-            submission=submission,
-            grammar_score=90.0,
-            vocabulary_score=90.0,
-            coherence_score=90.0,
-            fluency_score=90.0,
-            feedback_summary="Great work! Your writing demonstrates good command of the language.",
-            suggestions=[
-                "Try to use more complex sentence structures",
-                "Expand your vocabulary with synonyms",
-                "Pay attention to paragraph transitions"
-            ]
-        )
+        logger.info(f"Processing writing submission {submission.submission_id} for user {request.user.id}")
         
-        return JsonResponse({
-            'success': True,
-            'submission_id': str(submission.submission_id),
-            'score': 90.0,
-            'message': 'Writing submitted successfully'
-        })
+        # Assess the writing using AI
+        assessment_result = assess_writing(topic, text_body, word_count)
+        
+        if assessment_result['success']:
+            # Update submission with overall score and completed status
+            submission.overall_score = assessment_result['overall_score']
+            submission.status = AnalysisStatus.COMPLETED
+            submission.save()
+            
+            # Create assessment result
+            AssessmentResult.objects.create(
+                submission=submission,
+                grammar_score=assessment_result['grammar_score'],
+                vocabulary_score=assessment_result['vocabulary_score'],
+                coherence_score=assessment_result['coherence_score'],
+                fluency_score=assessment_result['fluency_score'],
+                feedback_summary=assessment_result['feedback_summary'],
+                suggestions=assessment_result['suggestions']
+            )
+            
+            logger.info(f"Writing assessment completed: {submission.submission_id}, score: {submission.overall_score}")
+            
+            return JsonResponse({
+                'success': True,
+                'submission_id': str(submission.submission_id),
+                'score': submission.overall_score,
+                'message': 'Writing submitted and assessed successfully'
+            })
+        else:
+            # Mark as failed
+            submission.status = AnalysisStatus.FAILED
+            submission.save()
+            
+            logger.error(f"Writing assessment failed: {submission.submission_id}, error: {assessment_result.get('error')}")
+            
+            return JsonResponse({
+                'success': False,
+                'submission_id': str(submission.submission_id),
+                'error': assessment_result.get('error', 'Assessment failed'),
+                'message': 'Submission saved but assessment failed. Please try again.'
+            }, status=500)
         
     except Exception as e:
+        logger.error(f"Error in submit_writing: {e}", exc_info=True)
         return JsonResponse({'error': str(e)}, status=500)
 
 

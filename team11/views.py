@@ -3,6 +3,7 @@ import os
 import logging
 import random
 import threading
+from django.db.models import Avg
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_POST, require_http_methods
@@ -31,14 +32,16 @@ def _process_writing_assessment(submission_id, topic, text_body, word_count):
             submission.status = AnalysisStatus.COMPLETED
             submission.save()
 
-            AssessmentResult.objects.using('team11').create(
+            AssessmentResult.objects.using('team11').update_or_create(
                 submission=submission,
-                grammar_score=assessment_result['grammar_score'],
-                vocabulary_score=assessment_result['vocabulary_score'],
-                coherence_score=assessment_result['coherence_score'],
-                fluency_score=assessment_result['fluency_score'],
-                feedback_summary=assessment_result['feedback_summary'],
-                suggestions=assessment_result['suggestions']
+                defaults={
+                    'grammar_score': assessment_result['grammar_score'],
+                    'vocabulary_score': assessment_result['vocabulary_score'],
+                    'coherence_score': assessment_result['coherence_score'],
+                    'fluency_score': assessment_result['fluency_score'],
+                    'feedback_summary': assessment_result['feedback_summary'],
+                    'suggestions': assessment_result['suggestions'],
+                }
             )
             logger.info(f"Writing assessment completed: {submission.submission_id}, score: {submission.overall_score}")
             return
@@ -46,10 +49,12 @@ def _process_writing_assessment(submission_id, topic, text_body, word_count):
         error_msg = 'ارزیابی ناموفق بود. لطفاً دوباره تلاش کنید.'
         submission.status = AnalysisStatus.FAILED
         submission.save()
-        AssessmentResult.objects.using('team11').create(
+        AssessmentResult.objects.using('team11').update_or_create(
             submission=submission,
-            feedback_summary=error_msg,
-            suggestions=[]
+            defaults={
+                'feedback_summary': error_msg,
+                'suggestions': [],
+            }
         )
         logger.error(f"Writing assessment failed: {submission.submission_id}, error: {assessment_result.get('error')}")
     except Exception as e:
@@ -76,15 +81,17 @@ def _process_listening_assessment(submission_id, listening_detail_pk, audio_file
             submission.status = AnalysisStatus.COMPLETED
             submission.save()
 
-            AssessmentResult.objects.using('team11').create(
+            AssessmentResult.objects.using('team11').update_or_create(
                 submission=submission,
-                pronunciation_score=assessment_result['pronunciation_score'],
-                fluency_score=assessment_result['fluency_score'],
-                vocabulary_score=assessment_result['vocabulary_score'],
-                grammar_score=assessment_result['grammar_score'],
-                coherence_score=assessment_result['coherence_score'],
-                feedback_summary=assessment_result['feedback_summary'],
-                suggestions=assessment_result['suggestions']
+                defaults={
+                    'pronunciation_score': assessment_result['pronunciation_score'],
+                    'fluency_score': assessment_result['fluency_score'],
+                    'vocabulary_score': assessment_result['vocabulary_score'],
+                    'grammar_score': assessment_result['grammar_score'],
+                    'coherence_score': assessment_result['coherence_score'],
+                    'feedback_summary': assessment_result['feedback_summary'],
+                    'suggestions': assessment_result['suggestions'],
+                }
             )
             logger.info(f"Speaking assessment completed: {submission.submission_id}, score: {submission.overall_score}")
             return
@@ -96,10 +103,12 @@ def _process_listening_assessment(submission_id, listening_detail_pk, audio_file
 
         submission.status = AnalysisStatus.FAILED
         submission.save()
-        AssessmentResult.objects.using('team11').create(
+        AssessmentResult.objects.using('team11').update_or_create(
             submission=submission,
-            feedback_summary=error_msg,
-            suggestions=[]
+            defaults={
+                'feedback_summary': error_msg,
+                'suggestions': [],
+            }
         )
         logger.error(f"Speaking assessment failed: {submission.submission_id}, error: {raw_error}")
     except Exception as e:
@@ -141,8 +150,14 @@ def dashboard(request):
         'listening_details'
     ).order_by('-created_at')
     
+    completed_submissions = submissions.filter(status=AnalysisStatus.COMPLETED, overall_score__isnull=False)
+    completed_count = completed_submissions.count()
+    avg_score = completed_submissions.aggregate(avg=Avg('overall_score'))['avg']
+
     context = {
         'submissions': submissions,
+        'completed_count': completed_count,
+        'avg_score': round(avg_score, 2) if avg_score is not None else 0,
     }
     return render(request, f"{TEAM_NAME}/dashboard.html", context)
 
@@ -231,7 +246,7 @@ def submit_writing(request):
         text_body = data.get('text_body', '')
         
         if not text_body:
-            return JsonResponse({'error': 'Text body is required'}, status=400)
+            return JsonResponse({'error': 'متن ارسالی نمی‌تواند خالی باشد.'}, status=400)
         
         word_count = len(text_body.split())
         
@@ -303,7 +318,7 @@ def submit_listening(request):
         duration = data.get('duration_seconds', 0)
         
         if not audio_url and not audio_data:
-            return JsonResponse({'error': 'Audio data is required'}, status=400)
+            return JsonResponse({'error': 'فایل صوتی ارسال نشده است.'}, status=400)
         
         user_id = request.user.id
         
@@ -405,8 +420,8 @@ def submit_listening(request):
             return JsonResponse({
                 'success': False,
                 'submission_id': str(submission.submission_id),
-                'error': f'Audio processing failed: {str(audio_error)}',
-                'message': 'Submission saved but audio processing failed. Please try again.'
+                'error': f'پردازش صوت با خطا مواجه شد: {str(audio_error)}',
+                'message': 'ارسال ذخیره شد اما پردازش صوت ناموفق بود. لطفاً دوباره تلاش کنید.'
             }, status=500)
         
     except Exception as e:

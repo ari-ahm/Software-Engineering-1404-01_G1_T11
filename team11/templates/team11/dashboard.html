@@ -117,13 +117,13 @@
           
           <div style="background: white; padding: 25px; border-radius: 15px; text-align: center;">
             <div style="font-size: 2rem; color: var(--navy); font-weight: bold;">
-              {% widthratio submissions|length 1 1 %}
+              {{ completed_count }}
             </div>
             <div style="color: var(--dark-blue); margin-top: 5px;">آزمون‌های تکمیل شده</div>
           </div>
           
           <div style="background: white; padding: 25px; border-radius: 15px; text-align: center;">
-            <div style="font-size: 2rem; color: var(--navy); font-weight: bold;">90.0</div>
+            <div style="font-size: 2rem; color: var(--navy); font-weight: bold;">{{ avg_score }}</div>
             <div style="color: var(--dark-blue); margin-top: 5px;">میانگین نمرات</div>
           </div>
         </div>

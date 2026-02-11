@@ -1,9 +1,12 @@
 from pathlib import Path
+import json
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from openai import OpenAI, APIError, APIConnectionError, RateLimitError
 
+from .models import Submission, WritingSubmission, AssessmentResult, SubmissionType, AnalysisStatus
 from .services import assess_writing, assess_speaking
 from .services.ai_service import API_BASE_URL, API_KEY, DEEPSEEK_MODEL
 
@@ -113,3 +116,61 @@ class Team11AuthTests(TestCase):
         body = response.json()
         self.assertEqual(body.get("team"), "team11")
         self.assertTrue(body.get("ok"))
+
+
+class Team11SubmissionApiTests(TestCase):
+    databases = {"default", "team11"}
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            email="submit_user@example.com",
+            password="testpass123",
+        )
+        self.client.force_login(self.user)
+
+    def test_submit_writing_rejects_empty_text(self):
+        response = self.client.post(
+            "/team11/api/submit-writing/",
+            data=json.dumps(
+                {
+                    "topic": "Sample topic",
+                    "text_body": "",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json().get("error"),
+            "متن ارسالی نمی‌تواند خالی باشد.",
+        )
+        self.assertEqual(Submission.objects.using("team11").count(), 0)
+
+    @patch("team11.views.threading.Thread")
+    def test_submit_writing_creates_submission_and_returns_202(self, thread_mock):
+        response = self.client.post(
+            "/team11/api/submit-writing/",
+            data=json.dumps(
+                {
+                    "topic": "Test topic",
+                    "text_body": "This is a valid writing submission body.",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 202)
+        body = response.json()
+        self.assertTrue(body.get("success"))
+        self.assertEqual(body.get("status"), "processing")
+
+        submission = Submission.objects.using("team11").get(submission_id=body["submission_id"])
+        self.assertEqual(submission.user_id, self.user.id)
+        self.assertEqual(submission.submission_type, SubmissionType.WRITING)
+        self.assertEqual(submission.status, AnalysisStatus.IN_PROGRESS)
+        self.assertTrue(
+            WritingSubmission.objects.using("team11").filter(submission=submission).exists()
+        )
+        thread_mock.assert_called_once()
+        thread_mock.return_value.start.assert_called_once()

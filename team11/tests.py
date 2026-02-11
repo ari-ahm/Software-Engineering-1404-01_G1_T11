@@ -175,6 +175,22 @@ class Team11SubmissionApiTests(TestCase):
         thread_mock.assert_called_once()
         thread_mock.return_value.start.assert_called_once()
 
+    def test_submit_writing_rejects_persian_text(self):
+        response = self.client.post(
+            "/team11/api/submit-writing/",
+            data=json.dumps(
+                {
+                    "topic": "Test topic",
+                    "text_body": "این یک متن فارسی است.",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json().get("error"), "فقط متن انگلیسی قابل قبول است.")
+        self.assertEqual(Submission.objects.using("team11").count(), 0)
+
     def test_submission_status_returns_failed_message_from_assessment_result(self):
         submission = Submission.objects.using("team11").create(
             user_id=self.user.id,
